@@ -3,85 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal de Migração - LEVE IA</title>
+    <title>Portal Oficial LEVE IA (V2)</title>
     <style>
-        body { font-family: 'Arial', sans-serif; background-color: #0f172a; color: #ffffff; text-align: center; padding: 50px; }
-        .container { max-width: 600px; margin: 0 auto; background: #1e293b; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h1 { color: #38bdf8; }
-        .btn { background-color: #38bdf8; color: #0f172a; padding: 15px 30px; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 20px; }
-        .btn:hover { background-color: #0ea5e9; }
-        #status { margin-top: 20px; font-size: 18px; }
-        .info-box { background: #334155; padding: 15px; border-radius: 8px; margin-top: 20px; display: none; }
-        .logo { max-width: 100px; margin-bottom: 20px; }
+        body { font-family: 'Courier New', monospace; background-color: #000000; color: #00ff00; text-align: center; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; border: 1px solid #00ff00; padding: 20px; box-shadow: 0 0 15px #00ff00; }
+        h1 { text-transform: uppercase; text-shadow: 0 0 5px #00ff00; }
+        .btn { background-color: #00ff00; color: #000; padding: 15px 30px; font-size: 18px; border: none; cursor: pointer; font-weight: bold; margin-top: 20px; }
+        .btn:hover { background-color: #ffffff; }
+        .info-box { border: 1px dashed #00ff00; padding: 15px; margin-top: 20px; display: none; }
+        #consoleLog { color: yellow; font-size: 12px; margin-top: 30px; text-align: left; border-top: 1px solid gray; padding-top: 10px; }
     </style>
-    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <img src="https://placehold.co/100x100?text=LEVE" alt="Leve IA Logo" class="logo"> 
-        <h1>Portal de Migração V2</h1>
-        <p>Conecte sua carteira para verificar seu saldo de migração.</p>
+        <h1>LEVE IA - MIGRATION</h1>
+        <p>Conecte sua carteira para verificar sua alocação V2.</p>
         
-        <button class="btn" onclick="connectWallet()">Conectar Carteira</button>
+        <button id="connectBtn" class="btn" onclick="connectWallet()">CONECTAR CARTEIRA</button>
         
         <div id="infoArea" class="info-box">
-            <p>Carteira Conectada:</p>
-            <p id="walletAddress" style="color: #38bdf8; word-break: break-all;">-</p>
-            <hr style="border-color: #475569;">
-            <h3>Seu Saldo Reservado:</h3>
-            <h2 id="claimableAmount" style="color: #4ade80;">0 LEVE</h2>
-            <p style="font-size: 12px; color: #94a3b8;">*O saque será liberado conforme o cronograma oficial.</p>
+            <p>Carteira: <span id="walletAddress">...</span></p>
+            <h3>SALDO RESERVADO:</h3>
+            <h1 id="claimableAmount" style="font-size: 40px;">---</h1>
+            <p>Status: <span id="statusText">Aguardando...</span></p>
         </div>
-        
-        <p id="status"></p>
+
+        <div id="consoleLog">Log do Sistema: Aguardando ação...</div>
     </div>
 
     <script>
-        const VAULT_ADDRESS = "0x4474Ad931757466B401ABE0B93445E8cB21ddCc6"; // Seu Cofre Real
+        // Endereço do Cofre (Vesting)
+        const VAULT_ADDRESS = "0x4474Ad931757466B401ABE0B93445E8cB21ddCc6";
+        
+        // ABI Mínima necessária
         const VAULT_ABI = [
             "function beneficiaries(address) view returns (uint256 totalAmount, uint256 claimedAmount)",
             "function calculateReleasable(address) view returns (uint256)"
         ];
 
+        function log(msg) {
+            const box = document.getElementById("consoleLog");
+            box.innerHTML += "<br>> " + msg;
+            console.log(msg);
+        }
+
         async function connectWallet() {
-            const status = document.getElementById("status");
-            const infoArea = document.getElementById("infoArea");
+            log("Iniciando conexão...");
             
             if (!window.ethereum) {
-                status.innerText = "ERRO: Instale a MetaMask ou use o navegador da TrustWallet.";
+                log("ERRO: Nenhuma carteira detectada. Instale MetaMask ou Rabby.");
+                alert("Instale uma carteira (MetaMask/Rabby)!");
                 return;
             }
 
             try {
-                const provider = new ethers.providers.Web3Provider(window.ethereum);
-                await provider.send("eth_requestAccounts", []);
-                const signer = provider.getSigner();
+                // 1. Conectar Provider
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                const signer = await provider.getSigner();
                 const address = await signer.getAddress();
-
-                document.getElementById("walletAddress").innerText = address;
-                infoArea.style.display = "block";
-                status.innerText = "Buscando dados na Blockchain...";
-
-                const contract = new ethers.Contract(VAULT_ADDRESS, VAULT_ABI, provider);
                 
-                // Consulta o total que a pessoa tem direito (Struct Beneficiaries)
-                const userData = await contract.beneficiaries(address);
-                const totalAmount = ethers.utils.formatUnits(userData.totalAmount, 18);
+                log("Carteira conectada: " + address);
+                
+                // Atualizar UI
+                document.getElementById("connectBtn").style.display = "none";
+                document.getElementById("infoArea").style.display = "block";
+                document.getElementById("walletAddress").innerText = address;
 
-                if (parseFloat(totalAmount) > 0) {
-                    document.getElementById("claimableAmount").innerText = parseFloat(totalAmount).toLocaleString('pt-BR') + " LEVE";
-                    status.innerText = "✅ Você possui tokens para migração!";
+                // 2. Conectar Contrato
+                log("Buscando contrato: " + VAULT_ADDRESS);
+                const contract = new ethers.Contract(VAULT_ADDRESS, VAULT_ABI, provider);
+
+                // 3. Ler Dados
+                log("Lendo dados da Blockchain...");
+                const userData = await contract.beneficiaries(address);
+                
+                // Converter BigInt para String formatada
+                const totalRaw = userData[0]; // totalAmount
+                const totalFormatted = ethers.formatUnits(totalRaw, 18);
+                
+                log("Saldo Bruto encontrado: " + totalRaw);
+
+                if (parseFloat(totalFormatted) > 0) {
+                    document.getElementById("claimableAmount").innerText = parseFloat(totalFormatted).toLocaleString('pt-BR') + " LEVE";
+                    document.getElementById("statusText").innerText = "✅ Você está na lista de migração.";
+                    log("SUCESSO: Usuário encontrado na lista.");
                 } else {
-                    document.getElementById("claimableAmount").innerText = "0 LEVE";
-                    status.innerText = "⚠️ Nenhum saldo encontrado para esta carteira na lista de migração.";
+                    document.getElementById("claimableAmount").innerText = "0.00 LEVE";
+                    document.getElementById("statusText").innerText = "❌ Carteira não encontrada na lista de prioridade (50k+).";
+                    log("AVISO: Saldo zero. Usuário não cadastrado ainda.");
                 }
 
             } catch (error) {
-                console.error(error);
-                status.innerText = "Erro ao conectar: " + error.message;
+                log("ERRO FATAL: " + error.message);
+                alert("Erro: Veja o log na tela.");
             }
         }
     </script>
 </body>
-
 </html>
